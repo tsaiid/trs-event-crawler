@@ -79,13 +79,16 @@ def insert_a_test_event(service):
 def clear_calendar(service):
   # clear calendar
   print('Clearing calendar...')
-  eventsResult = service.events().list(calendarId='primary').execute()
-  events = eventsResult.get('items', [])
-
-  if not events:
-    print('No events found.')
-  for event in events:
-    service.events().delete(calendarId='primary', eventId=event['id']).execute()
+  page_token = None
+  while True:
+    events = service.events().list(calendarId='primary', pageToken=page_token).execute()
+    for event in events['items']:
+      #print event['summary']
+      service.events().delete(calendarId='primary', eventId=event['id']).execute()
+      print(event['id'] + " deleted")
+    page_token = events.get('nextPageToken')
+    if not page_token:
+      break
 
 
 def print_events(service):
