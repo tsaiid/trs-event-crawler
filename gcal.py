@@ -9,27 +9,19 @@ from oauth2client.file import Storage
 from oauth2client.service_account import ServiceAccountCredentials
 
 import datetime
+import argparse
 
-try:
-    import argparse
-    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
-except ImportError:
-    flags = None
-
-# If modifying these scopes, delete your previously saved credentials
-# at ~/.credentials/calendar-python-quickstart.json
-SCOPES = 'https://www.googleapis.com/auth/calendar'
-CLIENT_SECRET_FILE = 'client_secret.json'
-KEY_FILE = '_client_secret.json'
 
 
 # Functions
 def get_credentials():
-    credentials = ServiceAccountCredentials.from_json_keyfile_name(KEY_FILE, scopes=SCOPES)
-    return credentials
+  SCOPES = 'https://www.googleapis.com/auth/calendar'
+  KEY_FILE = '_client_secret.json'
+  credentials = ServiceAccountCredentials.from_json_keyfile_name(KEY_FILE, scopes=SCOPES)
+  return credentials
 
-def create_calendar():
-  # Create a calendar for the Service Account
+def create_calendar(service):
+  # Create a non-primary calendar for the Service Account
   calendar = {
     'summary': 'My Calendar',
   #  'timeZone': 'America/Los_Angeles'
@@ -40,7 +32,7 @@ def create_calendar():
   print(created_calendar['id'])
 
 
-def list_calendars():
+def list_calendars(service):
   # List calendars
   print('Listing calendars')
   page_token = None
@@ -53,7 +45,7 @@ def list_calendars():
       break
 
 
-def set_calendar_owner():
+def set_calendar_owner(service):
   # Set calendar owner
   rule = {
       'scope': {
@@ -68,7 +60,7 @@ def set_calendar_owner():
   print(created_rule['id'])
 
 
-def insert_a_test_event():
+def insert_a_test_event(service):
   # Insert an event
   event = {
     'summary': 'Test Event',
@@ -84,7 +76,7 @@ def insert_a_test_event():
   print('Event created: %s' % (event.get('htmlLink')))
 
 
-def clear_calendar():
+def clear_calendar(service):
   # clear calendar
   print('Clearing calendar...')
   eventsResult = service.events().list(calendarId='primary').execute()
@@ -96,7 +88,7 @@ def clear_calendar():
     service.events().delete(calendarId='primary', eventId=event['id']).execute()
 
 
-def print_events():
+def print_events(service):
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
 
     print('Getting the upcoming 10 events...')
@@ -111,20 +103,36 @@ def print_events():
         start = event['start'].get('dateTime', event['start'].get('date'))
         print(start, event['summary'])
 
-
-# Global vars
-credentials = get_credentials()
-http = credentials.authorize(httplib2.Http())
-service = discovery.build('calendar', 'v3', http=http)
-
+def service_init():
+  credentials = get_credentials()
+  http = credentials.authorize(httplib2.Http())
+  service = discovery.build('calendar', 'v3', http=http)
+  return service
 
 def main():
-    #create_calendar()
-    #list_calendars()
-    #set_calendar_owner()
-    #insert_a_test_event()
-    clear_calendar()
-    #print_events()
+  parser = argparse.ArgumentParser(description='Google Calendar manipulation utility.')
+  group = parser.add_mutually_exclusive_group(required=True)
+  group.add_argument("-c", help="create a non-primary calendar", action="store_true")
+  group.add_argument("-l", help="delete events in db", action="store_true")
+  group.add_argument("-s", help="set calendar owner", action="store_true")
+  group.add_argument("-i", help="insert a test event", action="store_true")
+  group.add_argument("-r", help="clear all events in calendar", action="store_true")
+  group.add_argument("-p", help="print all events in calendar", action="store_true")
+  args = parser.parse_args()
+
+  service = service_init()
+  if args.c:
+    create_calendar(service)
+  elif args.l:
+    list_calendars(service)
+  elif args.s:
+    set_calendar_owner(service)
+  elif args.i:
+    insert_a_test_event(service)
+  elif args.r:
+    clear_calendar(service)
+  elif args.p:
+    print_events(service)
 
 if __name__ == '__main__':
     main()
