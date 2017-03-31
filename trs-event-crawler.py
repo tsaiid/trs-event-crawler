@@ -29,11 +29,11 @@ class TrsEventCrawler:
     self.service = self.service_init()
     self.verbose = kwargs['verbose']
     self.test = kwargs['test']
+    self.dry_run = kwargs['dry_run']
 
   def __del__(self):
     self.conn.commit()
     self.conn.close()
-    print "__del__"
 
   def connect_db(self):
     conn = sqlite3.connect(SQL_FILE)
@@ -59,7 +59,9 @@ class TrsEventCrawler:
       },
     }
     g_event = self.service.events().insert(calendarId=CALENDAR_ID, body=g_event).execute()
-    print('Event created: %s' % (g_event.get('htmlLink')))
+    if g_event is not None and self.verbose > 0:
+      print('Event created: %s' % (g_event.get('htmlLink')))
+    return g_event
 
 
   def add_db_event(self, id, title, description, start_date, end_date):
@@ -114,9 +116,16 @@ class TrsEventCrawler:
           print "start_date: " + start_date + "\tend_date: " + end_date
 
         if not self.db_exist_event(event_id):
-          print "not exists in local db"
-          self.add_db_event(event_id, title, event_url, start_date, end_date)
-          self.add_gcal_event(title, event_url, start_date, end_date)
+          not_exists_str = "not exists in local db"
+          if not self.verbose:
+            not_exists_str += ": " + start_date + " " + title
+          print not_exists_str
+          if not self.dry_run:
+            g_event = self.add_gcal_event(title, event_url, start_date, end_date)
+            if g_event is not None:
+              self.add_db_event(event_id, title, event_url, start_date, end_date)
+          else:
+            print "not added to db and gcal in dry-run mode"
         else:
           if self.verbose > 0:
             print "exists in local db"
@@ -145,6 +154,8 @@ def main():
   crawler = TrsEventCrawler(**vars(args))
 
   today = datetime.today()
+  if args.dry_run:
+    print 'Dry run mode.'
   print 'Current date: ', today
   i = 0
   while i < args.months:
