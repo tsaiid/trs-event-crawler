@@ -67,7 +67,7 @@ class TrsEventCrawler:
   def add_db_event(self, id, title, description, start_date, end_date):
     self.c.execute("INSERT INTO events VALUES (?,?,?,?,?)", (id, title, description, start_date, end_date))
     if self.verbose > 0:
-      print "added to db"
+      print("added to db")
 
 
   def db_exist_event(self, id):
@@ -79,31 +79,31 @@ class TrsEventCrawler:
   def fetch_event_month(self, year, month):
     r = requests.get(EVENT_BASE_URL + '/action/index.asp?EType=&YEARNOW=' + str(year) + '&MONTHNOW=' + str(month))
     r.encoding = 'big5'
-    #print r.text
+    #print(r.text)
     tree = html.fromstring(r.text)
     events = tree.xpath('//table[@class="cal_table"]/tr/td/div/a')
     #urls = tree.xpath('//table[@class="cal_table"]/tr/td/div/a/@href')
-    #print 'Events: ', events[0].attrib['href']
-    #print 'Urls: ', urls
+    #print('Events: ' + events[0].attrib['href'])
+    #print('Urls: ' + urls)
 
     for index, event in enumerate(events):
       match = re.search(r"id=(\d+)$", event.attrib['href'])
       if match:
         event_id = match.group(1)
         if self.verbose > 0:
-          print "event_id: " + event_id
+          print("event_id: " + event_id)
 
         event_url = EVENT_BASE_URL + event.attrib['href']
         r_event = requests.get(event_url)
         r_event.encoding = 'big5'
-        #print r_event.text
+        #print(r_event.text)
 
         event_tree = html.fromstring(r_event.text)
         title = event_tree.xpath('//h4[1]/text()')[0].replace(u'研討會】', u'】')
         if self.verbose > 1:
-          print "title: " + title
+          print("title: " + title)
         if self.verbose > 2:
-          print "event_url: " + event_url
+          print("event_url: " + event_url)
 
         date_row = event_tree.xpath('//table[@class="annual_table1"]/tr[1]/td[1]/text()')
         date = re.findall(r"\b\d{4}\/\d{2}\/\d{2}\b", date_row[0])
@@ -113,27 +113,27 @@ class TrsEventCrawler:
         else:
           end_date = (datetime.strptime(date[0], "%Y/%m/%d") + relativedelta(days=1)).strftime("%Y-%m-%d")
         if self.verbose > 1:
-          print "start_date: " + start_date + "\tend_date: " + end_date
+          print("start_date: " + start_date + "\tend_date: " + end_date)
 
         if not self.db_exist_event(event_id):
           not_exists_str = "not exists in local db"
           if not self.verbose:
             not_exists_str += ": " + start_date + " " + title
-          print not_exists_str
+          print(not_exists_str)
           if not self.dry_run:
             g_event = self.add_gcal_event(title, event_url, start_date, end_date)
             if g_event is not None:
               self.add_db_event(event_id, title, event_url, start_date, end_date)
           else:
-            print "not added to db and gcal in dry-run mode"
+            print("not added to db and gcal in dry-run mode")
         else:
           if self.verbose > 0:
-            print "exists in local db"
+            print("exists in local db")
 
         if self.test and index > 3:
           break
       else:
-        print "No ID found. Probably not an avalable event."
+        print("No ID found. Probably not an avalable event.")
 
 
 def check_positive(value):
@@ -148,21 +148,21 @@ def main():
   parser.add_argument("-t", "--test", help="fetch only first few events", action="store_true")
   parser.add_argument("-d", "--dry-run", help="dry run", action="store_true")
   parser.add_argument("-m", "--months", type=check_positive, default=3)
-  parser.add_argument("-v", "--verbose", help="increase output verbosity", action="count")
+  parser.add_argument("-v", "--verbose", help="increase output verbosity", action="count", default=0)
   args = parser.parse_args()
 
   crawler = TrsEventCrawler(**vars(args))
 
   today = datetime.today()
   if args.dry_run:
-    print 'Dry run mode.'
-  print 'Current date: ', today
+    print('Dry run mode.')
+  print('Current date: ' + today.strftime("%Y-%m-%d"))
   i = 0
   while i < args.months:
     date = today + relativedelta(months=i)
     year = date.year
     month = date.month
-    print 'Fetching year: ', year, ' month: ', month
+    print('Fetching year: ' + str(year) + ' month: ' + str(month))
     crawler.fetch_event_month(year, month)
     i += 1
 
