@@ -1,0 +1,6 @@
+[packages]
+requests = "*"
+lxml = "*"
+httplib2 = "*"
+google-api-python-client = "*"
+python-dateutil = "*"
