@@ -1,6 +1,12 @@
 [packages]
+
 requests = "*"
 lxml = "*"
-httplib2 = "*"
+"httplib2" = "*"
 google-api-python-client = "*"
 python-dateutil = "*"
+
+
+[dev-packages]
+
+pylint = "*"
